@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏰 Math Kingdom - Learn Math with Magic!</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header with Rank Display -->
+        <header class="header">
+            <h1 class="title">🏰 Math Kingdom ✨</h1>
+            <p class="subtitle">Learn Math with Magic!</p>
+            <div class="rank-display" id="rankDisplay">
+                <span class="rank-icon" id="rankIcon">🌱</span>
+                <div class="rank-info">
+                    <div class="rank-name" id="rankName">Little Seedling</div>
+                    <div class="rank-score">Score: <span id="totalScore">0</span> ⭐</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Welcome Screen -->
+        <section class="screen active" id="welcomeScreen">
+            <div class="card welcome-card">
+                <h2>🌸 Welcome, little learner! 🌸</h2>
+                <p>Enter your name to begin your magical adventure:</p>
+                <input type="text" id="playerName" class="name-input" placeholder="Your name..." maxlength="20">
+                <button class="btn btn-primary" onclick="Game.start()">Start Adventure! 🚀</button>
+            </div>
+        </section>
+
+        <!-- Menu Screen -->
+        <section class="screen" id="menuScreen">
+            <div class="topics-grid" id="topicsGrid"></div>
+        </section>
+
+        <!-- Quiz Screen -->
+        <section class="screen" id="quizScreen">
+            <div class="card quiz-card">
+                <div class="quiz-header">
+                    <button class="btn btn-back" onclick="Game.backToMenu()">← Back</button>
+                    <div class="progress-info">
+                        <span>Question <span id="currentQ">1</span>/<span id="totalQ">10</span></span>
+                        <span class="score-badge">Correct: <span id="correctCount">0</span> ⭐</span>
+                    </div>
+                </div>
+
+                <div class="question-box" id="questionBox">
+                    <div class="question-visual" id="qVisual">🌸</div>
+                    <div class="question-text" id="qText">Loading question...</div>
+                </div>
+
+                <div class="options-container" id="optionsContainer"></div>
+
+                <div class="input-container" id="inputContainer" style="display:none;">
+                    <input type="text" id="answerInput" class="answer-input" placeholder="?" inputmode="numeric">
+                    <button class="btn btn-primary" onclick="Quiz.checkInputAnswer()">Check ✨</button>
+                </div>
+
+                <div class="feedback-box" id="feedback"></div>
+                <button class="btn btn-next" id="nextBtn" onclick="Quiz.next()">Next Question →</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Celebration Modal -->
+    <div class="modal-overlay" id="celebrationModal">
+        <div class="modal-content">
+            <div class="modal-icon" id="modalIcon">🎉</div>
+            <h2 class="modal-title" id="modalTitle">Amazing!</h2>
+            <p class="modal-message" id="modalMessage">You did great!</p>
+            <button class="btn btn-primary" onclick="Modal.close()">Continue 🌟</button>
+        </div>
+    </div>
+
+    <!-- Confetti Container -->
+    <div class="confetti-container" id="confettiContainer"></div>
+
+    <!-- Load Core Engine -->
+    <script src="core.js" type="module"></script>
+</body>
+
+</html>
