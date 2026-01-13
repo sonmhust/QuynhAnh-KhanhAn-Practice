@@ -27,8 +27,12 @@
         <section class="screen active" id="welcomeScreen">
             <div class="card welcome-card">
                 <h2>🌸 Welcome, little learner! 🌸</h2>
-                <p>Enter your name to begin your magical adventure:</p>
-                <input type="text" id="playerName" class="name-input" placeholder="Your name..." maxlength="20">
+                <p>Enter your username to begin your magical adventure:</p>
+                <div
+                    style="margin: 10px 0; padding: 10px; background: rgba(255,182,193,0.2); border-radius: 8px; font-size: 14px;">
+                    ✨ Allowed users: <strong>quynhanh</strong> or <strong>khanhan</strong>
+                </div>
+                <input type="text" id="playerName" class="name-input" placeholder="Your username..." maxlength="20">
                 <button class="btn btn-primary" onclick="Game.start()">Start Adventure! 🚀</button>
             </div>
         </section>
@@ -79,6 +83,12 @@
 
     <!-- Confetti Container -->
     <div class="confetti-container" id="confettiContainer"></div>
+
+    <!-- Load Firebase SDK (ES Modules from CDN) -->
+    <script type="module">
+        // Import and initialize Firebase first
+        import './firebase-config.js';
+    </script>
 
     <!-- Load Core Engine -->
     <script src="core.js" type="module"></script>

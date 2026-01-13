@@ -10,6 +10,8 @@ import { generateQuestion as generateShapes } from './modules/shapes.js';
 import { generateQuestion as generateArithmetic } from './modules/arithmetic.js';
 import { generateQuestion as generateMultiply } from './modules/multiply.js';
 import { generateQuestion as generateMoney } from './modules/money.js';
+import { generateQuestion as generateCalculations } from './modules/calculations.js';
+import { FirebaseDB } from './firebase-config.js';
 
 // ============== CONSTANTS ==============
 const RANKS = [
@@ -26,7 +28,8 @@ const TOPICS = [
     { id: 'shapes', icon: '📦', title: '3D Shapes', desc: 'Cube, Sphere, Cylinder & more', generator: generateShapes },
     { id: 'arithmetic', icon: '➕', title: 'Add & Subtract', desc: 'Addition & subtraction to 100', generator: generateArithmetic },
     { id: 'multiply', icon: '✖️', title: 'Multiply & Divide', desc: 'Tables for 1, 2, 5, 10', generator: generateMultiply },
-    { id: 'money', icon: '💰', title: 'Money', desc: 'US Dollars & Cents', generator: generateMoney }
+    { id: 'money', icon: '💰', title: 'Money', desc: 'US Dollars & Cents', generator: generateMoney },
+    { id: 'calculations', icon: '📊', title: 'Calculations', desc: 'Column addition & subtraction', generator: generateCalculations }
 ];
 
 const QUESTIONS_PER_QUIZ = 10;
@@ -37,6 +40,7 @@ const State = {
     playerName: '',
     totalScore: 0,
     currentRank: 0,
+    topicScores: {},
     currentTopic: null,
     questions: [],
     questionIndex: 0,
@@ -53,13 +57,18 @@ const showScreen = (id) => {
 
 // ============== STORAGE ==============
 const Storage = {
-    save() {
-        const data = { name: State.playerName, score: State.totalScore };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    async save() {
+        const rankIdx = Rank.get(State.totalScore);
+        const progressData = {
+            rank: RANKS[rankIdx].name,
+            rankIcon: RANKS[rankIdx].icon,
+            totalScore: State.totalScore,
+            topicScores: State.topicScores
+        };
+        await FirebaseDB.saveProgress(State.playerName, progressData);
     },
-    load() {
-        const data = localStorage.getItem(STORAGE_KEY);
-        return data ? JSON.parse(data) : null;
+    async load(username) {
+        return await FirebaseDB.loadProgress(username);
     }
 };
 
@@ -71,13 +80,13 @@ const Rank = {
         }
         return 0;
     },
-    
+
     update() {
         const rankIdx = this.get(State.totalScore);
         $('rankIcon').textContent = RANKS[rankIdx].icon;
         $('rankName').textContent = RANKS[rankIdx].name;
         $('totalScore').textContent = State.totalScore;
-        
+
         // Check for rank up
         if (rankIdx > State.currentRank) {
             State.currentRank = rankIdx;
@@ -95,11 +104,11 @@ const Modal = {
         $('modalMessage').textContent = message;
         $('celebrationModal').classList.add('show');
     },
-    
+
     showRankUp(rank) {
         this.show(rank.icon, '🎉 Rank Up! 🎉', `You are now a "${rank.name}"! Amazing!`);
     },
-    
+
     close() {
         $('celebrationModal').classList.remove('show');
     }
@@ -111,7 +120,7 @@ const Effects = {
         const container = $('confettiContainer');
         container.innerHTML = '';
         const colors = ['#FFB6C1', '#E6E6FA', '#98FB98', '#FFD700', '#FF69B4'];
-        
+
         for (let i = 0; i < 50; i++) {
             const piece = document.createElement('div');
             piece.className = 'confetti-piece';
@@ -120,7 +129,7 @@ const Effects = {
             piece.style.animationDelay = `${Math.random() * 0.5}s`;
             container.appendChild(piece);
         }
-        
+
         setTimeout(() => container.innerHTML = '', 3500);
     }
 };
@@ -137,31 +146,39 @@ function shuffle(arr) {
 
 // ============== GAME CONTROLLER ==============
 const Game = {
-    start() {
+    async start() {
         const name = $('playerName').value.trim();
         if (!name) {
             $('playerName').style.borderColor = 'var(--error)';
             return;
         }
-        
-        State.playerName = name;
-        
-        // Load saved progress
-        const saved = Storage.load();
-        if (saved && saved.name === name) {
-            State.totalScore = saved.score || 0;
+
+        // Validate username
+        if (!FirebaseDB.isValidUsername(name)) {
+            alert('⚠️ Invalid username! Only "quynhanh" and "khanhan" are allowed.');
+            $('playerName').style.borderColor = 'var(--error)';
+            return;
         }
-        
+
+        State.playerName = name;
+
+        // Load progress from Firebase
+        const saved = await Storage.load(name);
+        if (saved) {
+            State.totalScore = saved.totalScore || 0;
+            State.topicScores = saved.topicScores || {};
+        }
+
         State.currentRank = Rank.get(State.totalScore);
         Rank.update();
         this.renderTopics();
         showScreen('menuScreen');
     },
-    
+
     renderTopics() {
         const grid = $('topicsGrid');
         grid.innerHTML = '';
-        
+
         TOPICS.forEach(topic => {
             const card = document.createElement('div');
             card.className = 'topic-card';
@@ -174,9 +191,9 @@ const Game = {
             grid.appendChild(card);
         });
     },
-    
-    backToMenu() {
-        Storage.save();
+
+    async backToMenu() {
+        await Storage.save();
         showScreen('menuScreen');
     }
 };
@@ -188,48 +205,58 @@ const Quiz = {
         State.questions = [];
         State.questionIndex = 0;
         State.correctCount = 0;
-        
+
         // Generate questions using topic's generator
         for (let i = 0; i < QUESTIONS_PER_QUIZ; i++) {
             const difficulty = i < 4 ? 'easy' : i < 8 ? 'medium' : 'hard';
             State.questions.push(topic.generator(difficulty));
         }
-        
+
         $('totalQ').textContent = QUESTIONS_PER_QUIZ;
         showScreen('quizScreen');
         this.loadQuestion();
     },
-    
+
     loadQuestion() {
         if (State.questionIndex >= State.questions.length) {
             this.endQuiz();
             return;
         }
-        
+
         const q = State.questions[State.questionIndex];
         State.answered = false;
-        
+
         // Update UI
         $('currentQ').textContent = State.questionIndex + 1;
         $('correctCount').textContent = State.correctCount;
         $('qVisual').textContent = q.visual || '🌸';
         $('qText').textContent = q.question;
-        
+
+        // Handle column-formatted questions (HTML content)
+        const questionBox = $('questionBox');
+        const existingColumnCalc = questionBox.querySelector('.column-calculation');
+        if (existingColumnCalc) {
+            existingColumnCalc.remove();
+        }
+        if (q.questionHTML) {
+            questionBox.insertAdjacentHTML('beforeend', q.questionHTML);
+        }
+
         // Clear feedback
         const feedback = $('feedback');
         feedback.className = 'feedback-box';
         feedback.innerHTML = '';
         $('nextBtn').classList.remove('show');
-        
+
         // Render options or input
         const optContainer = $('optionsContainer');
         const inputContainer = $('inputContainer');
-        
+
         if (q.type === 'multiple_choice') {
             optContainer.style.display = 'grid';
             inputContainer.style.display = 'none';
             optContainer.innerHTML = '';
-            
+
             q.options.forEach(opt => {
                 const btn = document.createElement('button');
                 btn.className = 'option-btn';
@@ -244,15 +271,15 @@ const Quiz = {
             $('answerInput').focus();
         }
     },
-    
+
     checkAnswer(selected, q) {
         if (State.answered) return;
         State.answered = true;
-        
+
         const isCorrect = q.check ? q.check(selected) : selected.toString() === q.answer.toString();
         const feedback = $('feedback');
         const buttons = document.querySelectorAll('.option-btn');
-        
+
         buttons.forEach(btn => {
             btn.disabled = true;
             if (btn.textContent === q.answer.toString()) {
@@ -261,7 +288,7 @@ const Quiz = {
                 btn.classList.add('wrong');
             }
         });
-        
+
         if (isCorrect) {
             State.correctCount++;
             State.totalScore++;
@@ -272,23 +299,23 @@ const Quiz = {
             feedback.innerHTML = `❌ Not quite!<div class="hint-box">💡 Hint: ${q.hint}</div>`;
             feedback.className = 'feedback-box wrong show';
         }
-        
+
         $('correctCount').textContent = State.correctCount;
         $('nextBtn').classList.add('show');
     },
-    
+
     checkInputAnswer() {
         if (State.answered) return;
-        
+
         const input = $('answerInput').value.trim();
         const q = State.questions[State.questionIndex];
-        
+
         if (!input) return;
-        
+
         State.answered = true;
         const isCorrect = q.check ? q.check(input) : input === q.answer.toString();
         const feedback = $('feedback');
-        
+
         if (isCorrect) {
             State.correctCount++;
             State.totalScore++;
@@ -299,22 +326,30 @@ const Quiz = {
             feedback.innerHTML = `❌ The answer was: ${q.answer}<div class="hint-box">💡 Hint: ${q.hint}</div>`;
             feedback.className = 'feedback-box wrong show';
         }
-        
+
         $('correctCount').textContent = State.correctCount;
         $('nextBtn').classList.add('show');
     },
-    
+
     next() {
         State.questionIndex++;
         this.loadQuestion();
     },
-    
-    endQuiz() {
-        Storage.save();
-        
+
+    async endQuiz() {
+        // Update topic scores
+        const topicId = State.currentTopic.id;
+        if (!State.topicScores[topicId]) {
+            State.topicScores[topicId] = 0;
+        }
+        State.topicScores[topicId] += State.correctCount;
+
+        // Save to Firebase
+        await Storage.save();
+
         const percent = Math.round((State.correctCount / QUESTIONS_PER_QUIZ) * 100);
         let icon, message;
-        
+
         if (percent >= 80) {
             icon = '👑';
             message = "Outstanding! You're a math star!";
@@ -326,7 +361,7 @@ const Quiz = {
             icon = '🌸';
             message = 'Good effort! Try again to improve!';
         }
-        
+
         Modal.show(icon, `${State.correctCount}/${QUESTIONS_PER_QUIZ} Correct!`, message);
     }
 };
@@ -337,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('playerName').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') Game.start();
     });
-    
+
     // Enter key for answer input
     $('answerInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') Quiz.checkInputAnswer();
