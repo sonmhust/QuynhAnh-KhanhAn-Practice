@@ -3,8 +3,8 @@
  * Generates questions for: multiplication tables (1, 2, 5, 10), equal groups, basic division
  */
 
-const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+import { rand, shuffle, generateOptionsWithPreferred, getLang } from './utils.js';
+import { t } from '../translations.js';
 
 const TABLES = [1, 2, 5, 10];
 const ITEMS = ['🌸 flowers', '⭐ stars', '🍬 candies', '💎 gems', '🎈 balloons'];
@@ -21,6 +21,7 @@ export function generateQuestion(difficulty = 'easy') {
 }
 
 function generateMultiply(difficulty) {
+    const lang = getLang();
     const table = difficulty === 'easy'
         ? TABLES[rand(0, 1)] // 1 or 2
         : difficulty === 'medium'
@@ -34,33 +35,35 @@ function generateMultiply(difficulty) {
         question: `${table} × ${multiplier} = ?`,
         type: difficulty === 'hard' ? 'input' : 'multiple_choice',
         options: difficulty !== 'hard'
-            ? shuffle([answer, answer + table, answer - table, answer + 1])
+            ? generateOptionsWithPreferred(answer, [answer + table, answer - table, answer + 1])
             : undefined,
         answer: answer,
-        hint: `${table} times ${multiplier} means ${table} added ${multiplier} times`,
+        hint: `${table} ${t('multiply', 'hint_times', lang)} ${multiplier} ${t('multiply', 'hint_means', lang)} ${table} ${t('multiply', 'hint_added', lang)} ${multiplier} ${t('multiply', 'hint_times_count', lang)}`,
         visual: '✖️',
         check: (input) => parseInt(input) === answer
     };
 }
 
 function generateEqualGroups(difficulty) {
+    const lang = getLang();
     const groups = difficulty === 'easy' ? rand(2, 4) : difficulty === 'medium' ? rand(3, 6) : rand(5, 10);
     const perGroup = difficulty === 'easy' ? 2 : difficulty === 'medium' ? 5 : 10;
     const answer = groups * perGroup;
     const item = ITEMS[rand(0, ITEMS.length - 1)];
 
     return {
-        question: `There are ${groups} bags. Each bag has ${perGroup} ${item}. How many total?`,
+        question: `${groups} ${t('multiply', 'bags', lang)}. ${t('multiply', 'each', lang)} ${perGroup} ${item}. ${t('multiply', 'total', lang)}`,
         type: 'multiple_choice',
-        options: shuffle([answer, answer + perGroup, answer - perGroup, groups + perGroup]),
+        options: generateOptionsWithPreferred(answer, [answer + perGroup, answer - perGroup, groups]),
         answer: answer,
-        hint: `${groups} groups of ${perGroup} = ${groups} × ${perGroup}`,
+        hint: `${groups} ${t('multiply', 'hint_groups', lang)} ${perGroup} = ${groups} × ${perGroup}`,
         visual: '🛍️',
         check: (input) => parseInt(input) === answer
     };
 }
 
 function generateDivide(difficulty) {
+    const lang = getLang();
     const divisor = difficulty === 'easy' ? 2 : difficulty === 'medium' ? 5 : 10;
     const quotient = rand(1, 10);
     const dividend = divisor * quotient;
@@ -69,17 +72,17 @@ function generateDivide(difficulty) {
     const item = ITEMS[rand(0, ITEMS.length - 1)];
 
     const question = useWordProblem
-        ? `Share ${dividend} ${item} equally among ${divisor} friends. How many each?`
+        ? `${t('multiply', 'share', lang)} ${dividend} ${item} ${t('multiply', 'equally', lang)} ${divisor} ${t('multiply', 'friends', lang)}. ${t('multiply', 'howMany', lang)}`
         : `${dividend} ÷ ${divisor} = ?`;
 
     return {
         question: question,
         type: difficulty === 'hard' ? 'input' : 'multiple_choice',
         options: difficulty !== 'hard'
-            ? shuffle([quotient, quotient + 1, quotient - 1, divisor])
+            ? generateOptionsWithPreferred(quotient, [quotient + 1, quotient - 1, divisor])
             : undefined,
         answer: quotient,
-        hint: `How many ${divisor}s fit into ${dividend}?`,
+        hint: `${t('multiply', 'hint_howMany', lang)} ${divisor}${t('multiply', 'hint_fit', lang)} ${dividend}?`,
         visual: useWordProblem ? '🤝' : '➗',
         check: (input) => parseInt(input) === quotient
     };

@@ -262,6 +262,27 @@ body {
     display: inline-block;
 }
 
+/* Language Selection Buttons */
+.language-btn {
+    background: var(--white);
+    border: 2px solid var(--pink);
+    color: var(--gray-800);
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.95rem;
+    transition: var(--transition-fast);
+}
+
+.language-btn:hover {
+    background: var(--pink-light);
+    transform: scale(1.02);
+}
+
+.language-btn.active {
+    background: linear-gradient(135deg, var(--pink-dark), var(--lavender-dark));
+    color: var(--white);
+    border-color: var(--pink-dark);
+}
+
 /* === Topics Grid === */
 .topics-grid {
     display: grid;

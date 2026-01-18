@@ -3,8 +3,8 @@
  * Generates questions for: addition and subtraction within 100
  */
 
-const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+import { rand, shuffle, generateOptionsWithPreferred, getLang } from './utils.js';
+import { t } from '../translations.js';
 
 const CONTEXTS = [
     { emoji: '🍎', name: 'apples', action: 'picked', remove: 'ate' },
@@ -22,6 +22,7 @@ export function generateQuestion(difficulty = 'easy') {
 
 function generateAddition(difficulty) {
     let a, b;
+    const lang = getLang();
     const ctx = CONTEXTS[rand(0, CONTEXTS.length - 1)];
 
     if (difficulty === 'easy') {
@@ -40,17 +41,18 @@ function generateAddition(difficulty) {
 
     const answer = a + b;
     const useWordProblem = rand(0, 1) === 0;
+    const actionKey = ctx.action;
 
     const question = useWordProblem
-        ? `Princess has ${a} ${ctx.name} ${ctx.emoji}. She ${ctx.action} ${b} more. How many total?`
+        ? `${t('arithmetic', 'princess_has', lang)} ${a} ${ctx.name} ${ctx.emoji}. ${t('arithmetic', actionKey, lang)} ${b}. ${t('arithmetic', 'total_q', lang)}`
         : `${a} + ${b} = ?`;
 
     return {
         question: question,
         type: difficulty === 'hard' ? 'input' : 'multiple_choice',
-        options: difficulty !== 'hard' ? shuffle([answer, answer + 1, answer - 1, answer + 10]) : undefined,
+        options: difficulty !== 'hard' ? generateOptionsWithPreferred(answer, [answer + 1, answer - 1, answer + 10]) : undefined,
         answer: answer,
-        hint: `Add ones first, then tens: ${a} + ${b}`,
+        hint: `${t('arithmetic', 'hint_add_ones', lang)} ${a} + ${b}`,
         visual: useWordProblem ? ctx.emoji : '➕',
         check: (input) => parseInt(input) === answer
     };
@@ -58,6 +60,7 @@ function generateAddition(difficulty) {
 
 function generateSubtraction(difficulty) {
     let a, b;
+    const lang = getLang();
     const ctx = CONTEXTS[rand(0, CONTEXTS.length - 1)];
 
     if (difficulty === 'easy') {
@@ -73,18 +76,20 @@ function generateSubtraction(difficulty) {
 
     const answer = a - b;
     const useWordProblem = rand(0, 1) === 0;
+    const removeKey = ctx.remove.replace(' ', '_');
 
     const question = useWordProblem
-        ? `You have ${a} ${ctx.name} ${ctx.emoji}. You ${ctx.remove} ${b}. How many left?`
+        ? `${t('arithmetic', 'princess_has', lang)} ${a} ${ctx.name} ${ctx.emoji}. ${t('arithmetic', removeKey, lang)} ${b}. ${t('arithmetic', 'left_q', lang)}`
         : `${a} - ${b} = ?`;
 
     return {
         question: question,
         type: difficulty === 'hard' ? 'input' : 'multiple_choice',
-        options: difficulty !== 'hard' ? shuffle([answer, answer + 1, answer - 1, a]) : undefined,
+        options: difficulty !== 'hard' ? generateOptionsWithPreferred(answer, [answer + 1, answer - 1, a]) : undefined,
         answer: answer,
-        hint: `Start at ${a}, count back ${b}`,
+        hint: `${t('arithmetic', 'hint_count_back', lang)} ${a}, ${t('arithmetic', 'hint_count_back2', lang)} ${b}`,
         visual: useWordProblem ? ctx.emoji : '➖',
         check: (input) => parseInt(input) === answer
     };
 }
+

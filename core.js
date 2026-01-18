@@ -11,7 +11,8 @@ import { generateQuestion as generateArithmetic } from './modules/arithmetic.js'
 import { generateQuestion as generateMultiply } from './modules/multiply.js';
 import { generateQuestion as generateMoney } from './modules/money.js';
 import { generateQuestion as generateCalculations } from './modules/calculations.js';
-import { FirebaseDB } from './firebase-config.js';
+import { FirebaseAuth } from './firebase-auth.js';
+import { FirebaseDB } from './firebase-db.js';
 
 // ============== CONSTANTS ==============
 const RANKS = [
@@ -33,11 +34,12 @@ const TOPICS = [
 ];
 
 const QUESTIONS_PER_QUIZ = 10;
-const STORAGE_KEY = 'mathKingdom_progress';
 
 // ============== STATE ==============
 const State = {
+    currentUser: null,  // Firebase user object { uid, email, username, displayName }
     playerName: '',
+    language: 'en',  // Current language: 'en' or 'vi'
     totalScore: 0,
     currentRank: 0,
     topicScores: {},
@@ -45,7 +47,8 @@ const State = {
     questions: [],
     questionIndex: 0,
     correctCount: 0,
-    answered: false
+    answered: false,
+    profileUnsubscribe: null  // Firestore listener unsubscribe function
 };
 
 // ============== DOM HELPERS ==============
@@ -55,22 +58,8 @@ const showScreen = (id) => {
     $(id).classList.add('active');
 };
 
-// ============== STORAGE ==============
-const Storage = {
-    async save() {
-        const rankIdx = Rank.get(State.totalScore);
-        const progressData = {
-            rank: RANKS[rankIdx].name,
-            rankIcon: RANKS[rankIdx].icon,
-            totalScore: State.totalScore,
-            topicScores: State.topicScores
-        };
-        await FirebaseDB.saveProgress(State.playerName, progressData);
-    },
-    async load(username) {
-        return await FirebaseDB.loadProgress(username);
-    }
-};
+// ============== FIREBASE INTEGRATION ==============
+// No Storage object needed - using Firebase directly
 
 // ============== RANK SYSTEM ==============
 const Rank = {
@@ -81,17 +70,26 @@ const Rank = {
         return 0;
     },
 
-    update() {
+    async update() {
         const rankIdx = this.get(State.totalScore);
         $('rankIcon').textContent = RANKS[rankIdx].icon;
         $('rankName').textContent = RANKS[rankIdx].name;
         $('totalScore').textContent = State.totalScore;
 
-        // Check for rank up
+        // Check for rank up and save to Firebase
         if (rankIdx > State.currentRank) {
             State.currentRank = rankIdx;
             Modal.showRankUp(RANKS[rankIdx]);
             Effects.confetti();
+
+            // Update rank in Firestore
+            if (State.currentUser) {
+                await FirebaseDB.updateUserRank(
+                    State.currentUser.uid,
+                    RANKS[rankIdx].name,
+                    RANKS[rankIdx].icon
+                );
+            }
         }
     }
 };
@@ -149,30 +147,49 @@ const Game = {
     async start() {
         const name = $('playerName').value.trim();
         if (!name) {
-            $('playerName').style.borderColor = 'var(--error)';
+            alert('⚠️ Please enter your name!');
             return;
         }
 
         // Validate username
-        if (!FirebaseDB.isValidUsername(name)) {
+        if (!FirebaseAuth.isValidUsername(name)) {
             alert('⚠️ Invalid username! Only "quynhanh" and "khanhan" are allowed.');
-            $('playerName').style.borderColor = 'var(--error)';
             return;
         }
 
-        State.playerName = name;
+        try {
+            // Sign in with Firebase
+            const user = await FirebaseAuth.signIn(name);
+            State.currentUser = user;
+            State.playerName = user.username;
 
-        // Load progress from Firebase
-        const saved = await Storage.load(name);
-        if (saved) {
-            State.totalScore = saved.totalScore || 0;
-            State.topicScores = saved.topicScores || {};
+            // Create or get user profile from Firestore
+            await FirebaseDB.createUserProfile(user.uid, user);
+            const profile = await FirebaseDB.getUserProfile(user.uid);
+
+            if (profile) {
+                State.totalScore = profile.totalScore || 0;
+                State.topicScores = profile.topicScores || {};
+            }
+
+            // Set up real-time listener for profile changes
+            State.profileUnsubscribe = FirebaseDB.listenToUserProfile(user.uid, (data) => {
+                if (data) {
+                    State.totalScore = data.totalScore || 0;
+                    State.topicScores = data.topicScores || {};
+                    State.currentRank = Rank.get(State.totalScore);
+                    Rank.update();
+                }
+            });
+
+            State.currentRank = Rank.get(State.totalScore);
+            Rank.update();
+            this.renderTopics();
+            showScreen('menuScreen');
+        } catch (error) {
+            console.error('Login error:', error);
+            alert(`😣 ${error.message}`);
         }
-
-        State.currentRank = Rank.get(State.totalScore);
-        Rank.update();
-        this.renderTopics();
-        showScreen('menuScreen');
     },
 
     renderTopics() {
@@ -192,8 +209,8 @@ const Game = {
         });
     },
 
-    async backToMenu() {
-        await Storage.save();
+    backToMenu() {
+        // No need to explicitly save - Firestore auto-syncs
         showScreen('menuScreen');
     }
 };
@@ -294,6 +311,12 @@ const Quiz = {
             State.totalScore++;
             feedback.innerHTML = '✨ Correct! Great job! ✨';
             feedback.className = 'feedback-box correct show';
+
+            // Save to Firebase (atomic increment)
+            if (State.currentUser && State.currentTopic) {
+                FirebaseDB.incrementStars(State.currentUser.uid, 1, State.currentTopic.id);
+            }
+
             Rank.update();
         } else {
             feedback.innerHTML = `❌ Not quite!<div class="hint-box">💡 Hint: ${q.hint}</div>`;
@@ -321,6 +344,12 @@ const Quiz = {
             State.totalScore++;
             feedback.innerHTML = '✨ Correct! Great job! ✨';
             feedback.className = 'feedback-box correct show';
+
+            // Save to Firebase (atomic increment)
+            if (State.currentUser && State.currentTopic) {
+                FirebaseDB.incrementStars(State.currentUser.uid, 1, State.currentTopic.id);
+            }
+
             Rank.update();
         } else {
             feedback.innerHTML = `❌ The answer was: ${q.answer}<div class="hint-box">💡 Hint: ${q.hint}</div>`;
@@ -336,16 +365,16 @@ const Quiz = {
         this.loadQuestion();
     },
 
-    async endQuiz() {
-        // Update topic scores
+    endQuiz() {
+        // Update topic scores locally
         const topicId = State.currentTopic.id;
         if (!State.topicScores[topicId]) {
             State.topicScores[topicId] = 0;
         }
         State.topicScores[topicId] += State.correctCount;
 
-        // Save to Firebase
-        await Storage.save();
+        // Auto-saved to Firebase during quiz
+        // (each correct answer triggered incrementStars)
 
         const percent = Math.round((State.correctCount / QUESTIONS_PER_QUIZ) * 100);
         let icon, message;
@@ -379,7 +408,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// ============== LANGUAGE SELECTION ==============
+function selectLanguage(lang) {
+    State.language = lang;
+
+    // Update button states
+    document.querySelectorAll('.language-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    $(`langBtn${lang.charAt(0).toUpperCase() + lang.slice(1)}`).classList.add('active');
+
+    console.log(`Language changed to: ${lang === 'en' ? 'English' : 'Tiếng Việt'}`);
+}
+
 // ============== EXPOSE TO GLOBAL (for onclick handlers) ==============
 window.Game = Game;
 window.Quiz = Quiz;
 window.Modal = Modal;
+window.selectLanguage = selectLanguage;
+window.State = State;
+

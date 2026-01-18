@@ -32,6 +32,22 @@
                     style="margin: 10px 0; padding: 10px; background: rgba(255,182,193,0.2); border-radius: 8px; font-size: 14px;">
                     ✨ Allowed users: <strong>quynhanh</strong> or <strong>khanhan</strong>
                 </div>
+
+                <!-- Language Selection -->
+                <div style="margin: 15px 0;">
+                    <p style="font-size: 14px; margin-bottom: 8px; color: var(--gray-500);">🌍 Select Language / Chọn
+                        Ngôn Ngữ:</p>
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button class="btn language-btn active" data-lang="en" id="langBtnEn"
+                            onclick="selectLanguage('en')">
+                            🇬🇧 English
+                        </button>
+                        <button class="btn language-btn" data-lang="vi" id="langBtnVi" onclick="selectLanguage('vi')">
+                            🇻🇳 Tiếng Việt
+                        </button>
+                    </div>
+                </div>
+
                 <input type="text" id="playerName" class="name-input" placeholder="Your username..." maxlength="20">
                 <button class="btn btn-primary" onclick="Game.start()">Start Adventure! 🚀</button>
             </div>

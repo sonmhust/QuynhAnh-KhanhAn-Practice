@@ -3,8 +3,8 @@
  * Generates questions for: 3D shape identification, properties, real-world objects
  */
 
-const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+import { rand, shuffle, generateOptionsWithPreferred, getLang } from './utils.js';
+import { t } from '../translations.js';
 
 const SHAPES = [
     { name: 'Cube', faces: 6, edges: 12, vertices: 8, canRoll: false, icon: '🧊', examples: ['dice', 'ice cube', 'Rubik\'s cube'] },
@@ -26,15 +26,16 @@ export function generateQuestion(difficulty = 'easy') {
 }
 
 function generateIdentify(difficulty) {
+    const lang = getLang();
     const shape = SHAPES[rand(0, SHAPES.length - 1)];
     const otherShapes = SHAPES.filter(s => s.name !== shape.name);
 
     const descriptions = {
-        easy: `What is this shape? ${shape.icon}`,
-        medium: `This shape has ${shape.faces} faces. What is it?`,
+        easy: `${t('shapes', 'what_is', lang)} ${shape.icon}`,
+        medium: `${t('shapes', 'has_faces', lang)} ${shape.faces} ${t('shapes', 'faces', lang)}. ${t('shapes', 'what_is_it', lang)}`,
         hard: shape.canRoll
-            ? `This shape can roll and has no corners. What is it?`
-            : `This shape has ${shape.vertices} vertices and cannot roll. What is it?`
+            ? t('shapes', 'can_roll_no_corners', lang)
+            : `${t('shapes', 'has_vertices', lang)} ${shape.vertices} ${t('shapes', 'vertices', lang)}`
     };
 
     return {
@@ -42,13 +43,14 @@ function generateIdentify(difficulty) {
         type: 'multiple_choice',
         options: shuffle([shape.name, ...otherShapes.slice(0, 3).map(s => s.name)]),
         answer: shape.name,
-        hint: `Think about what ${shape.examples[0]} looks like`,
+        hint: `${t('shapes', 'hint_think', lang)} ${shape.examples[0]} ${t('shapes', 'hint_looks_like', lang)}`,
         visual: shape.icon,
         check: (input) => input === shape.name
     };
 }
 
 function generateRealWorld(difficulty) {
+    const lang = getLang();
     const shape = SHAPES[rand(0, SHAPES.length - 1)];
     const example = shape.examples[rand(0, shape.examples.length - 1)];
     const otherShapes = SHAPES.filter(s => s.name !== shape.name);
@@ -57,42 +59,45 @@ function generateRealWorld(difficulty) {
     const article = 'aeiou'.includes(example[0].toLowerCase()) ? 'an' : 'a';
 
     return {
-        question: `What 3D shape is ${article} ${example}?`,
+        question: `${t('shapes', 'what_3d', lang)} ${article} ${example}?`,
         type: 'multiple_choice',
         options: shuffle([shape.name, ...otherShapes.slice(0, 3).map(s => s.name)]),
         answer: shape.name,
-        hint: `Think about the overall shape of ${article} ${example}`,
+        hint: `${t('shapes', 'hint_overall', lang)} ${article} ${example}`,
         visual: shape.icon,
         check: (input) => input === shape.name
     };
 }
 
 function generateProperties(difficulty) {
+    const lang = getLang();
+
     if (difficulty === 'easy') {
         // Can it roll?
         const shape = SHAPES[rand(0, SHAPES.length - 1)];
         return {
-            question: `Can a ${shape.name} ${shape.icon} roll?`,
+            question: `${t('shapes', 'can_roll', lang)} ${shape.name} ${shape.icon} ${t('shapes', 'roll_q', lang)}`,
             type: 'multiple_choice',
-            options: ['Yes', 'No'],
-            answer: shape.canRoll ? 'Yes' : 'No',
-            hint: shape.canRoll ? 'It has curved surfaces' : 'It has flat faces only',
+            options: [t('shapes', 'yes', lang), t('shapes', 'no', lang)],
+            answer: shape.canRoll ? t('shapes', 'yes', lang) : t('shapes', 'no', lang),
+            hint: shape.canRoll ? t('shapes', 'hint_curved', lang) : t('shapes', 'hint_flat', lang),
             visual: shape.icon,
-            check: (input) => input === (shape.canRoll ? 'Yes' : 'No')
+            check: (input) => input === (shape.canRoll ? t('shapes', 'yes', lang) : t('shapes', 'no', lang))
         };
     } else {
         // How many faces?
         const shape = SHAPES[rand(0, SHAPES.length - 1)];
         return {
             question: difficulty === 'hard'
-                ? `How many faces does a ${shape.name} have?`
-                : `A ${shape.name} ${shape.icon} has how many faces?`,
+                ? `${t('shapes', 'how_many_faces', lang)} ${shape.name} ${t('shapes', 'have', lang)}`
+                : `${t('shapes', 'a_has', lang)} ${shape.name} ${shape.icon} ${t('shapes', 'has_how_many', lang)}`,
             type: difficulty === 'hard' ? 'input' : 'multiple_choice',
-            options: difficulty !== 'hard' ? shuffle([shape.faces, shape.faces + 1, shape.faces - 1, 4]) : undefined,
+            options: difficulty !== 'hard' ? generateOptionsWithPreferred(shape.faces, [shape.faces + 1, shape.faces - 1, 4]) : undefined,
             answer: shape.faces,
-            hint: 'Count each flat surface',
+            hint: t('shapes', 'hint_count', lang),
             visual: shape.icon,
             check: (input) => parseInt(input) === shape.faces
         };
     }
 }
+

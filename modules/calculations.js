@@ -1,238 +1,418 @@
 /**
  * CALCULATIONS MODULE
- * Generates questions for: column addition, column subtraction, 
- * column subtraction with exchange, 2-digit subtraction with exchange
+ * Organized into 3 sections for Cambridge Primary Math Units 9-10:
+ * 
+ * SECTION 1: Relationship Between Addition and Subtraction
+ * SECTION 2: Relationship Between Multiplication and Division (Fact Families & Inverse)
+ * SECTION 3: Doubling and Halving (Lesson 10.3 Prep)
  */
 
-const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+import { rand, shuffle, generateOptionsWithPreferred, getLang } from './utils.js';
+import { t } from '../translations.js';
+
+// ============================================================================
+// MAIN QUESTION GENERATOR
+// ============================================================================
 
 export function generateQuestion(difficulty = 'easy') {
-    const type = rand(0, 3);
+    // Section weights: adjust based on curriculum focus
+    const section = rand(1, 3);
+
+    switch (section) {
+        case 1: return generateAddSubRelationship(difficulty);
+        case 2: return generateMultDivRelationship(difficulty);
+        case 3: return generateDoublingHalving(difficulty);
+        default: return generateAddSubRelationship(difficulty);
+    }
+}
+
+// ============================================================================
+// SECTION 1: RELATIONSHIP BETWEEN ADDITION AND SUBTRACTION
+// ============================================================================
+
+function generateAddSubRelationship(difficulty) {
+    const type = rand(0, 2);
 
     switch (type) {
-        case 0: return generateColumnAddition(difficulty);
-        case 1: return generateColumnSubtraction(difficulty);
-        case 2: return generateColumnSubtractionWithExchange(difficulty);
-        case 3: return generateTwoDigitSubtractionWithExchange(difficulty);
-        default: return generateColumnAddition(difficulty);
+        case 0: return generateAddSubFactFamily(difficulty);
+        case 1: return generateAddSubInverse(difficulty);
+        case 2: return generateMissingNumberAddSub(difficulty);
+        default: return generateAddSubFactFamily(difficulty);
     }
 }
 
 /**
- * Creates HTML for column format display
+ * Addition/Subtraction Fact Family
+ * Given 3 numbers, identify which equation belongs to the fact family
  */
-function createColumnHTML(num1, num2, operator) {
-    const num1Str = num1.toString().padStart(2, ' ');
-    const num2Str = num2.toString().padStart(2, ' ');
-    const maxLen = Math.max(num1Str.length, num2Str.length);
+function generateAddSubFactFamily(difficulty) {
+    const lang = getLang();
 
-    return `
-        <div class="column-calculation">
-            <div class="column-row top-number">${num1Str.split('').map(d => `<span class="digit">${d}</span>`).join('')}</div>
-            <div class="column-row bottom-number">
-                <span class="operator">${operator}</span>
-                ${num2Str.split('').map(d => `<span class="digit">${d}</span>`).join('')}
-            </div>
-            <div class="column-line"></div>
-            <div class="column-row answer-row">
-                <span class="digit answer-placeholder">?</span>
-            </div>
-        </div>
-    `;
-}
+    // Generate fact family numbers
+    const a = difficulty === 'easy' ? rand(2, 10) : difficulty === 'medium' ? rand(5, 20) : rand(10, 50);
+    const b = difficulty === 'easy' ? rand(2, 10) : difficulty === 'medium' ? rand(5, 20) : rand(10, 50);
+    const c = a + b;
 
-/**
- * COLUMN ADDITION
- * Simple column addition without carrying (easy) to with carrying (hard)
- */
-function generateColumnAddition(difficulty) {
-    let a, b;
+    // All 4 correct equations
+    const correctEquations = [
+        `${a} + ${b} = ${c}`,
+        `${b} + ${a} = ${c}`,
+        `${c} − ${a} = ${b}`,
+        `${c} − ${b} = ${a}`
+    ];
 
-    if (difficulty === 'easy') {
-        // No carrying needed: ones digits sum < 10
-        const tensA = rand(1, 4);
-        const onesA = rand(1, 4);
-        const tensB = rand(1, 4);
-        const onesB = rand(1, 9 - onesA); // Ensure no carry
-        a = tensA * 10 + onesA;
-        b = tensB * 10 + onesB;
-    } else if (difficulty === 'medium') {
-        // May need carrying
-        a = rand(20, 50);
-        b = rand(15, 40);
-        // Ensure sum < 100
-        if (a + b >= 100) b = 99 - a;
-    } else {
-        // Definitely carrying needed, larger numbers
-        const tensA = rand(3, 6);
-        const onesA = rand(5, 9);
-        const tensB = rand(2, Math.floor((99 - tensA * 10 - onesA) / 10));
-        const onesB = rand(10 - onesA, 9); // Force carrying
-        a = tensA * 10 + onesA;
-        b = tensB * 10 + onesB;
-        // Ensure sum < 100
-        if (a + b >= 100) b = 99 - a;
-    }
+    // Wrong equations
+    const wrongEquations = [
+        `${a} − ${b} = ${c}`,
+        `${c} + ${a} = ${b}`,
+        `${a} × ${b} = ${c}`,
+        `${c} ÷ ${a} = ${b}`
+    ];
 
-    const answer = a + b;
-    const columnHTML = createColumnHTML(a, b, '+');
+    const correctAnswer = correctEquations[rand(0, 3)];
+    const wrongOptions = shuffle(wrongEquations).slice(0, 3);
 
     return {
-        question: `Solve this column addition:`,
-        questionHTML: columnHTML,
-        type: difficulty === 'hard' ? 'input' : 'multiple_choice',
-        options: difficulty !== 'hard' ? shuffle([answer, answer + 1, answer - 1, answer + 10]) : undefined,
-        answer: answer,
-        hint: `Add the ones first, then add the tens. ${a} + ${b} = ?`,
-        visual: '📊',
-        check: (input) => parseInt(input) === answer
+        question: `${t('calc', 'fact_family_addsub_q', lang)} ${a}, ${b}, ${c}`,
+        type: 'multiple_choice',
+        options: shuffle([correctAnswer, ...wrongOptions]),
+        answer: correctAnswer,
+        hint: t('calc', 'hint_fact_family_addsub', lang),
+        visual: '👨‍👩‍👧‍👦',
+        check: (input) => input === correctAnswer
     };
 }
 
 /**
- * COLUMN SUBTRACTION (no exchange/borrowing)
+ * Addition/Subtraction Inverse - True or False
  */
-function generateColumnSubtraction(difficulty) {
-    let a, b;
+function generateAddSubInverse(difficulty) {
+    const lang = getLang();
 
-    if (difficulty === 'easy') {
-        // No borrowing needed: ones of a >= ones of b
-        const tensA = rand(3, 5);
-        const onesA = rand(5, 9);
-        const tensB = rand(1, tensA - 1);
-        const onesB = rand(1, onesA); // No borrow needed
-        a = tensA * 10 + onesA;
-        b = tensB * 10 + onesB;
-    } else if (difficulty === 'medium') {
-        // Still no borrowing, larger numbers
-        const tensA = rand(5, 8);
-        const onesA = rand(5, 9);
-        const tensB = rand(2, tensA - 1);
-        const onesB = rand(0, onesA);
-        a = tensA * 10 + onesA;
-        b = tensB * 10 + onesB;
+    const a = difficulty === 'easy' ? rand(5, 15) : difficulty === 'medium' ? rand(10, 30) : rand(20, 50);
+    const b = difficulty === 'easy' ? rand(2, 10) : difficulty === 'medium' ? rand(5, 20) : rand(10, 30);
+    const c = a + b;
+
+    const isTrue = rand(0, 1) === 0;
+    let statement, answer;
+
+    if (isTrue) {
+        const templates = [
+            `${t('calc', 'if', lang)} ${a} + ${b} = ${c}, ${t('calc', 'then', lang)} ${c} − ${b} = ${a}`,
+            `${t('calc', 'if', lang)} ${c} − ${a} = ${b}, ${t('calc', 'then', lang)} ${b} + ${a} = ${c}`
+        ];
+        statement = templates[rand(0, 1)];
+        answer = t('calc', 'true', lang);
     } else {
-        // No borrowing, full 2-digit range
-        const tensA = rand(6, 9);
-        const onesA = rand(5, 9);
-        const tensB = rand(3, tensA - 1);
-        const onesB = rand(0, onesA);
-        a = tensA * 10 + onesA;
-        b = tensB * 10 + onesB;
+        const wrongC = c + rand(1, 5);
+        const templates = [
+            `${t('calc', 'if', lang)} ${a} + ${b} = ${c}, ${t('calc', 'then', lang)} ${c} − ${b} = ${a + 1}`,
+            `${t('calc', 'if', lang)} ${a} + ${b} = ${wrongC}, ${t('calc', 'then', lang)} ${wrongC} − ${b} = ${a}`
+        ];
+        statement = templates[rand(0, 1)];
+        answer = t('calc', 'false', lang);
     }
 
-    const answer = a - b;
-    const columnHTML = createColumnHTML(a, b, '−');
-
     return {
-        question: `Solve this column subtraction:`,
-        questionHTML: columnHTML,
-        type: difficulty === 'hard' ? 'input' : 'multiple_choice',
-        options: difficulty !== 'hard' ? shuffle([answer, answer + 1, answer - 1, answer + 10]) : undefined,
+        question: `${t('calc', 'inverse_true_false', lang)} ${statement}`,
+        type: 'multiple_choice',
+        options: [t('calc', 'true', lang), t('calc', 'false', lang)],
         answer: answer,
-        hint: `Subtract the ones first, then subtract the tens. ${a} − ${b} = ?`,
-        visual: '📊',
-        check: (input) => parseInt(input) === answer
-    };
-}
-
-/**
- * COLUMN SUBTRACTION WITH EXCHANGE (borrowing)
- * The ones digit of top number < ones digit of bottom number
- */
-function generateColumnSubtractionWithExchange(difficulty) {
-    let a, b;
-
-    if (difficulty === 'easy') {
-        // Simple exchange needed
-        const tensA = rand(3, 5);
-        const onesA = rand(0, 4);
-        const tensB = rand(1, tensA - 2); // Leave room after borrowing
-        const onesB = rand(onesA + 1, 9); // Force borrow
-        a = tensA * 10 + onesA;
-        b = tensB * 10 + onesB;
-    } else if (difficulty === 'medium') {
-        // Exchange with medium numbers
-        const tensA = rand(5, 7);
-        const onesA = rand(0, 5);
-        const tensB = rand(2, tensA - 2);
-        const onesB = rand(onesA + 1, 9);
-        a = tensA * 10 + onesA;
-        b = tensB * 10 + onesB;
-    } else {
-        // Exchange with larger numbers
-        const tensA = rand(6, 9);
-        const onesA = rand(0, 4);
-        const tensB = rand(3, tensA - 2);
-        const onesB = rand(onesA + 2, 9);
-        a = tensA * 10 + onesA;
-        b = tensB * 10 + onesB;
-    }
-
-    const answer = a - b;
-    const columnHTML = createColumnHTML(a, b, '−');
-
-    return {
-        question: `Solve with exchange (borrowing):`,
-        questionHTML: columnHTML,
-        type: difficulty === 'hard' ? 'input' : 'multiple_choice',
-        options: difficulty !== 'hard' ? shuffle([answer, answer + 1, answer - 1, answer + 10]) : undefined,
-        answer: answer,
-        hint: `You need to borrow! Take 1 ten from ${Math.floor(a / 10)} tens, add 10 to ${a % 10} ones.`,
+        hint: t('calc', 'hint_inverse_addsub', lang),
         visual: '🔄',
-        check: (input) => parseInt(input) === answer
+        check: (input) => input === answer
     };
 }
 
 /**
- * SUBTRACTING 2-DIGIT NUMBERS WITH EXCHANGING
- * Both numbers are 2-digit, requires borrowing
+ * Find the missing number using inverse relationship
  */
-function generateTwoDigitSubtractionWithExchange(difficulty) {
-    let a, b;
+function generateMissingNumberAddSub(difficulty) {
+    const lang = getLang();
 
-    if (difficulty === 'easy') {
-        // 2-digit minus 2-digit with simple exchange
-        const tensA = rand(4, 6);
-        const onesA = rand(1, 4);
-        const tensB = rand(1, tensA - 2);
-        const onesB = rand(onesA + 1, 9);
-        a = tensA * 10 + onesA;
-        b = tensB * 10 + onesB;
-    } else if (difficulty === 'medium') {
-        // Larger 2-digit numbers
-        const tensA = rand(5, 7);
-        const onesA = rand(0, 4);
-        const tensB = rand(2, tensA - 2);
-        const onesB = rand(onesA + 2, 9);
-        a = tensA * 10 + onesA;
-        b = tensB * 10 + onesB;
+    const a = difficulty === 'easy' ? rand(5, 15) : difficulty === 'medium' ? rand(10, 30) : rand(20, 50);
+    const b = difficulty === 'easy' ? rand(2, 10) : difficulty === 'medium' ? rand(5, 20) : rand(10, 30);
+    const c = a + b;
+
+    const template = rand(0, 2);
+    let question, answer, hint;
+
+    if (template === 0) {
+        // a + ? = c
+        question = `${a} + ☐ = ${c}. ${t('calc', 'find_missing', lang)}`;
+        answer = b;
+        hint = `${t('calc', 'hint_use_inverse', lang)} ${c} − ${a} = ?`;
+    } else if (template === 1) {
+        // ? + b = c
+        question = `☐ + ${b} = ${c}. ${t('calc', 'find_missing', lang)}`;
+        answer = a;
+        hint = `${t('calc', 'hint_use_inverse', lang)} ${c} − ${b} = ?`;
     } else {
-        // Full range 2-digit with exchange
-        const tensA = rand(7, 9);
-        const onesA = rand(0, 3);
-        const tensB = rand(3, tensA - 2);
-        const onesB = rand(onesA + 3, 9);
-        a = tensA * 10 + onesA;
-        b = tensB * 10 + onesB;
+        // c - ? = a
+        question = `${c} − ☐ = ${a}. ${t('calc', 'find_missing', lang)}`;
+        answer = b;
+        hint = `${t('calc', 'hint_use_inverse', lang)} ${c} − ${a} = ?`;
     }
 
-    const answer = a - b;
-    const columnHTML = createColumnHTML(a, b, '−');
+    return {
+        question: question,
+        type: difficulty === 'hard' ? 'input' : 'multiple_choice',
+        options: difficulty !== 'hard' ? generateOptionsWithPreferred(answer, [answer + 1, answer - 1, answer + 5]) : undefined,
+        answer: answer,
+        hint: hint,
+        visual: '❓',
+        check: (input) => parseInt(input) === answer
+    };
+}
 
-    // Create step-by-step hint
-    const borrowedOnes = (a % 10) + 10;
-    const remainingTens = Math.floor(a / 10) - 1;
+// ============================================================================
+// SECTION 2: RELATIONSHIP BETWEEN MULTIPLICATION AND DIVISION
+// (Fact Families & Inverse Equations)
+// ============================================================================
+
+function generateMultDivRelationship(difficulty) {
+    const type = rand(0, 2);
+
+    switch (type) {
+        case 0: return generateMultDivFactFamily(difficulty);
+        case 1: return generateMultDivInverse(difficulty);
+        case 2: return generateRepeatedAdditionToMult(difficulty);
+        default: return generateMultDivFactFamily(difficulty);
+    }
+}
+
+/**
+ * Multiplication/Division Fact Family
+ */
+function generateMultDivFactFamily(difficulty) {
+    const lang = getLang();
+
+    const table = difficulty === 'easy' ? 2 : difficulty === 'medium' ? 5 : 10;
+    const multiplier = difficulty === 'easy' ? rand(1, 5) : rand(2, 10);
+    const product = table * multiplier;
+
+    const a = table;
+    const b = multiplier;
+    const c = product;
+
+    const correctEquations = [
+        `${a} × ${b} = ${c}`,
+        `${b} × ${a} = ${c}`,
+        `${c} ÷ ${a} = ${b}`,
+        `${c} ÷ ${b} = ${a}`
+    ];
+
+    const wrongEquations = [
+        `${a} × ${b} = ${c + a}`,
+        `${c} ÷ ${a} = ${b + 1}`,
+        `${a} + ${b} = ${c}`,
+        `${c} − ${a} = ${b}`
+    ];
+
+    const correctAnswer = correctEquations[rand(0, 3)];
+    const wrongOptions = shuffle(wrongEquations).slice(0, 3);
 
     return {
-        question: `Subtract these 2-digit numbers (use exchange):`,
-        questionHTML: columnHTML,
-        type: difficulty === 'hard' ? 'input' : 'multiple_choice',
-        options: difficulty !== 'hard' ? shuffle([answer, answer + 1, answer - 1, answer + 10]) : undefined,
+        question: `${t('calc', 'fact_family_multdiv_q', lang)} ${a}, ${b}, ${c}`,
+        type: 'multiple_choice',
+        options: shuffle([correctAnswer, ...wrongOptions]),
+        answer: correctAnswer,
+        hint: t('calc', 'hint_fact_family_multdiv', lang),
+        visual: '👨‍👩‍👧‍👦',
+        check: (input) => input === correctAnswer
+    };
+}
+
+/**
+ * Multiplication/Division Inverse - True or False
+ */
+function generateMultDivInverse(difficulty) {
+    const lang = getLang();
+
+    const table = difficulty === 'easy' ? 2 : difficulty === 'medium' ? 5 : 10;
+    const multiplier = rand(1, 10);
+    const product = table * multiplier;
+
+    const isTrue = rand(0, 1) === 0;
+    let statement, answer;
+
+    if (isTrue) {
+        const templates = [
+            `${t('calc', 'if', lang)} ${table} × ${multiplier} = ${product}, ${t('calc', 'then', lang)} ${product} ÷ ${table} = ${multiplier}`,
+            `${t('calc', 'if', lang)} ${product} ÷ ${multiplier} = ${table}, ${t('calc', 'then', lang)} ${table} × ${multiplier} = ${product}`
+        ];
+        statement = templates[rand(0, 1)];
+        answer = t('calc', 'true', lang);
+    } else {
+        const templates = [
+            `${t('calc', 'if', lang)} ${table} × ${multiplier} = ${product}, ${t('calc', 'then', lang)} ${product} ÷ ${table} = ${multiplier + 1}`,
+            `${t('calc', 'if', lang)} ${table} × ${multiplier} = ${product + table}, ${t('calc', 'then', lang)} ${product + table} ÷ ${table} = ${multiplier}`
+        ];
+        statement = templates[rand(0, 1)];
+        answer = t('calc', 'false', lang);
+    }
+
+    return {
+        question: `${t('calc', 'inverse_true_false', lang)} ${statement}`,
+        type: 'multiple_choice',
+        options: [t('calc', 'true', lang), t('calc', 'false', lang)],
         answer: answer,
-        hint: `Step 1: Borrow → ${borrowedOnes} − ${b % 10} = ${borrowedOnes - (b % 10)}. Step 2: ${remainingTens} − ${Math.floor(b / 10)} = ${remainingTens - Math.floor(b / 10)}`,
-        visual: '🧮',
-        check: (input) => parseInt(input) === answer
+        hint: t('calc', 'hint_inverse_multdiv', lang),
+        visual: '🔄',
+        check: (input) => input === answer
+    };
+}
+
+/**
+ * Convert Repeated Addition to Multiplication
+ */
+function generateRepeatedAdditionToMult(difficulty) {
+    const lang = getLang();
+
+    const base = difficulty === 'easy' ? rand(2, 5) : difficulty === 'medium' ? rand(2, 10) : 10;
+    const times = difficulty === 'easy' ? rand(2, 4) : difficulty === 'medium' ? rand(2, 6) : rand(3, 10);
+
+    const additionParts = Array(times).fill(base);
+    const additionStr = additionParts.join(' + ');
+    const sum = base * times;
+
+    const correctAnswer = `${times} × ${base}`;
+    const wrongAnswers = [
+        `${base} + ${times}`,
+        `${times + 1} × ${base}`,
+        `${times} × ${base + 1}`
+    ];
+
+    return {
+        question: `${t('calc', 'repeated_addition', lang)} ${additionStr} = ${sum}`,
+        type: 'multiple_choice',
+        options: shuffle([correctAnswer, ...wrongAnswers]),
+        answer: correctAnswer,
+        hint: `${t('calc', 'hint_repeated', lang)} ${base} ${t('calc', 'hint_appears', lang)} ${times} ${t('calc', 'hint_times_word', lang)}`,
+        visual: '➕➡️✖️',
+        check: (input) => input === correctAnswer
+    };
+}
+
+// ============================================================================
+// SECTION 3: DOUBLING AND HALVING (Lesson 10.3 Prep)
+// ============================================================================
+
+function generateDoublingHalving(difficulty) {
+    const type = rand(0, 2);
+
+    switch (type) {
+        case 0: return generateDoubling(difficulty);
+        case 1: return generateHalving(difficulty);
+        case 2: return generateDoubleHalveConnection(difficulty);
+        default: return generateDoubling(difficulty);
+    }
+}
+
+/**
+ * Doubling - Connect to 2× table
+ */
+function generateDoubling(difficulty) {
+    const lang = getLang();
+
+    const number = difficulty === 'easy' ? rand(1, 10) : difficulty === 'medium' ? rand(5, 25) : rand(10, 50);
+    const doubled = number * 2;
+
+    const template = rand(0, 1);
+
+    if (template === 0) {
+        return {
+            question: `${t('calc', 'double_of', lang)} ${number}?`,
+            type: difficulty === 'hard' ? 'input' : 'multiple_choice',
+            options: difficulty !== 'hard' ? generateOptionsWithPreferred(doubled, [doubled + 2, doubled - 2, number]) : undefined,
+            answer: doubled,
+            hint: `${t('calc', 'hint_double', lang)}: ${number} + ${number} = ?`,
+            visual: '✕2️⃣',
+            check: (input) => parseInt(input) === doubled
+        };
+    } else {
+        return {
+            question: `2 × ${number} = ? (${t('calc', 'same_as_double', lang)})`,
+            type: difficulty === 'hard' ? 'input' : 'multiple_choice',
+            options: difficulty !== 'hard' ? generateOptionsWithPreferred(doubled, [doubled + 1, doubled - 1, number + 2]) : undefined,
+            answer: doubled,
+            hint: `${t('calc', 'hint_double_means', lang)} ${number} + ${number}`,
+            visual: '2️⃣',
+            check: (input) => parseInt(input) === doubled
+        };
+    }
+}
+
+/**
+ * Halving - Connect to ÷2
+ */
+function generateHalving(difficulty) {
+    const lang = getLang();
+
+    // Use even numbers for clean halving
+    const half = difficulty === 'easy' ? rand(1, 10) : difficulty === 'medium' ? rand(5, 25) : rand(10, 50);
+    const number = half * 2;
+
+    const template = rand(0, 1);
+
+    if (template === 0) {
+        return {
+            question: `${t('calc', 'half_of', lang)} ${number}?`,
+            type: difficulty === 'hard' ? 'input' : 'multiple_choice',
+            options: difficulty !== 'hard' ? generateOptionsWithPreferred(half, [half + 1, half - 1, number]) : undefined,
+            answer: half,
+            hint: `${t('calc', 'hint_half', lang)}: ${number} ÷ 2 = ?`,
+            visual: '➗2️⃣',
+            check: (input) => parseInt(input) === half
+        };
+    } else {
+        return {
+            question: `${number} ÷ 2 = ? (${t('calc', 'same_as_half', lang)})`,
+            type: difficulty === 'hard' ? 'input' : 'multiple_choice',
+            options: difficulty !== 'hard' ? generateOptionsWithPreferred(half, [half + 2, half - 2, half * 2]) : undefined,
+            answer: half,
+            hint: `${t('calc', 'hint_half_means', lang)} ${number} ${t('calc', 'hint_into_two', lang)}`,
+            visual: '½',
+            check: (input) => parseInt(input) === half
+        };
+    }
+}
+
+/**
+ * Double and Halve Connection - Inverse relationship
+ */
+function generateDoubleHalveConnection(difficulty) {
+    const lang = getLang();
+
+    const number = difficulty === 'easy' ? rand(2, 10) : difficulty === 'medium' ? rand(5, 20) : rand(10, 40);
+    const doubled = number * 2;
+
+    const isTrue = rand(0, 1) === 0;
+    let statement, answer;
+
+    if (isTrue) {
+        const templates = [
+            `${t('calc', 'if', lang)} ${t('calc', 'double_of', lang).toLowerCase()} ${number} = ${doubled}, ${t('calc', 'then', lang)} ${t('calc', 'half_of', lang).toLowerCase()} ${doubled} = ${number}`,
+            `${t('calc', 'double_then_half', lang)} ${number} ${t('calc', 'gives_back', lang)} ${number}`
+        ];
+        statement = templates[rand(0, 1)];
+        answer = t('calc', 'true', lang);
+    } else {
+        const templates = [
+            `${t('calc', 'if', lang)} ${t('calc', 'double_of', lang).toLowerCase()} ${number} = ${doubled}, ${t('calc', 'then', lang)} ${t('calc', 'half_of', lang).toLowerCase()} ${doubled} = ${number + 1}`,
+            `${t('calc', 'double_then_half', lang)} ${number} ${t('calc', 'gives_back', lang)} ${number + 2}`
+        ];
+        statement = templates[rand(0, 1)];
+        answer = t('calc', 'false', lang);
+    }
+
+    return {
+        question: `${t('calc', 'inverse_true_false', lang)} ${statement}`,
+        type: 'multiple_choice',
+        options: [t('calc', 'true', lang), t('calc', 'false', lang)],
+        answer: answer,
+        hint: t('calc', 'hint_double_halve_inverse', lang),
+        visual: '🔄',
+        check: (input) => input === answer
     };
 }
