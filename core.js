@@ -44,6 +44,7 @@ const State = {
     currentRank: 0,
     topicScores: {},
     currentTopic: null,
+    currentChapter: null,  // NEW: tracks selected chapter for multi-chapter topics
     questions: [],
     questionIndex: 0,
     correctCount: 0,
@@ -204,7 +205,12 @@ const Game = {
                 <div class="topic-title">${topic.title}</div>
                 <div class="topic-desc">${topic.desc}</div>
             `;
-            card.onclick = () => Quiz.start(topic);
+            // Check if calculations topic - show chapter selection
+            if (topic.id === 'calculations') {
+                card.onclick = () => Quiz.showChapterSelect(topic);
+            } else {
+                card.onclick = () => Quiz.start(topic);
+            }
             grid.appendChild(card);
         });
     },
@@ -217,8 +223,39 @@ const Game = {
 
 // ============== QUIZ CONTROLLER ==============
 const Quiz = {
-    start(topic) {
+    showChapterSelect(topic) {
         State.currentTopic = topic;
+        const grid = $('chaptersGrid');
+        grid.innerHTML = '';
+
+        // Define chapters for calculations
+        const chapters = [
+            { number: 1, icon: '📐', titleKey: 'chapter_1_title', descKey: 'chapter_1_desc' },
+            { number: 2, icon: '✖️', titleKey: 'chapter_2_title', descKey: 'chapter_2_desc' }
+        ];
+
+        import('./translations.js').then(({ t }) => {
+            chapters.forEach(chapter => {
+                const card = document.createElement('div');
+                card.className = 'chapter-card';
+                const title = t('calc', chapter.titleKey, State.language);
+                const desc = t('calc', chapter.descKey, State.language);
+                card.innerHTML = `
+                    <div class="chapter-number">${chapter.icon}</div>
+                    <div class="chapter-title">${title}</div>
+                    <div class="chapter-desc">${desc}</div>
+                `;
+                card.onclick = () => this.start(topic, chapter.number);
+                grid.appendChild(card);
+            });
+        });
+
+        showScreen('chapterScreen');
+    },
+
+    start(topic, chapter = null) {
+        State.currentTopic = topic;
+        State.currentChapter = chapter;
         State.questions = [];
         State.questionIndex = 0;
         State.correctCount = 0;
@@ -226,7 +263,8 @@ const Quiz = {
         // Generate questions using topic's generator
         for (let i = 0; i < QUESTIONS_PER_QUIZ; i++) {
             const difficulty = i < 4 ? 'easy' : i < 8 ? 'medium' : 'hard';
-            State.questions.push(topic.generator(difficulty));
+            // Pass chapter to generator if topic supports it
+            State.questions.push(topic.generator(difficulty, chapter));
         }
 
         $('totalQ').textContent = QUESTIONS_PER_QUIZ;

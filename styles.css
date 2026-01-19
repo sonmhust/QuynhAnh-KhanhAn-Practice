@@ -325,6 +325,53 @@ body {
     color: var(--gray-500);
 }
 
+/* === Chapters Grid (for multi-chapter topics) === */
+.chapters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: var(--space-md);
+    margin-top: var(--space-md);
+}
+
+.chapter-card {
+    background: linear-gradient(145deg, var(--white), var(--lavender-light));
+    border-radius: var(--radius-xl);
+    padding: var(--space-lg) var(--space-md);
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition-normal);
+    border: 3px solid var(--lavender);
+    box-shadow: var(--shadow-sm);
+}
+
+.chapter-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: var(--pink-dark);
+    box-shadow: var(--shadow-lg);
+}
+
+.chapter-number {
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--pink-dark), var(--lavender-dark));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--space-xs);
+}
+
+.chapter-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: var(--space-xs);
+}
+
+.chapter-desc {
+    font-size: 0.9rem;
+    color: var(--gray-500);
+}
+
 /* === Quiz === */
 .quiz-header {
     display: flex;

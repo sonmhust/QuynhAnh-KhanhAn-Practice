@@ -132,6 +132,24 @@ export const translations = {
         },
         // Calculations Module (3 Sections)
         calc: {
+            // Chapter Selection
+            chapter_1_title: 'Chapter 10.1: Column Calculations',
+            chapter_1_desc: 'Column add/sub, inverse equations & fact families',
+            chapter_2_title: 'Chapter 10.2: Multiplication',
+            chapter_2_desc: 'Connect addition to multiplication, double & half',
+            // Column Calculations
+            calculate: 'Calculate:',
+            column_add: 'Column Addition',
+            column_sub: 'Column Subtraction',
+            with_carrying: '(with carrying)',
+            no_carrying: '(no carrying)',
+            with_borrowing: '(with borrowing)',
+            no_borrowing: '(no borrowing)',
+            hint_line_up: 'Line up the digits vertically',
+            hint_add_ones_first: 'Add ones first, then tens',
+            hint_sub_ones_first: 'Subtract ones first, then tens',
+            hint_carry_ten: 'Remember to carry the ten!',
+            hint_borrow: 'You need to borrow from the tens place',
             // Section 1: Add/Sub Relationships
             fact_family_addsub_q: 'Which equation belongs to this fact family?',
             hint_fact_family_addsub: 'Use the same 3 numbers for + and −',
@@ -294,6 +312,24 @@ export const translations = {
         },
         // Calculations Module (3 Sections)
         calc: {
+            // Chapter Selection
+            chapter_1_title: 'Chương 10.1: Tính Cột',
+            chapter_1_desc: 'Cộng/trừ cột, phương trình nghịch đảo & họ phép tính',
+            chapter_2_title: 'Chương 10.2: Phép Nhân',
+            chapter_2_desc: 'Kết nối phép cộng và nhân, gấp đôi & chia đôi',
+            // Column Calculations
+            calculate: 'Tính:',
+            column_add: 'Cộng Cột',
+            column_sub: 'Trừ Cột',
+            with_carrying: '(có nhớ)',
+            no_carrying: '(không nhớ)',
+            with_borrowing: '(có mượn)',
+            no_borrowing: '(không mượn)',
+            hint_line_up: 'Xếp các chữ số thẳng cột',
+            hint_add_ones_first: 'Cộng hàng đơn vị trước, sau đó hàng chục',
+            hint_sub_ones_first: 'Trừ hàng đơn vị trước, sau đó hàng chục',
+            hint_carry_ten: 'Nhớ nhớ sang hàng chục!',
+            hint_borrow: 'Bạn cần mượn từ hàng chục',
             // Section 1: Add/Sub Relationships
             fact_family_addsub_q: 'Phương trình nào thuộc họ phép tính này?',
             hint_fact_family_addsub: 'Dùng 3 số giống nhau cho + và −',

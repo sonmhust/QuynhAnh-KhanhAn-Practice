@@ -1,10 +1,8 @@
 /**
- * CALCULATIONS MODULE
- * Organized into 3 sections for Cambridge Primary Math Units 9-10:
+ * CALCULATIONS MODULE - RESTRUCTURED WITH CHAPTERS
  * 
- * SECTION 1: Relationship Between Addition and Subtraction
- * SECTION 2: Relationship Between Multiplication and Division (Fact Families & Inverse)
- * SECTION 3: Doubling and Halving (Lesson 10.3 Prep)
+ * Chapter 10.1: Column Calculations + Inverse Equations & Fact Families
+ * Chapter 10.2: Multiplication (connection to addition, double/half, perform multiplication)
  */
 
 import { rand, shuffle, generateOptionsWithPreferred, getLang } from './utils.js';
@@ -14,46 +12,168 @@ import { t } from '../translations.js';
 // MAIN QUESTION GENERATOR
 // ============================================================================
 
-export function generateQuestion(difficulty = 'easy') {
-    // Section weights: adjust based on curriculum focus
-    const section = rand(1, 3);
-
-    switch (section) {
-        case 1: return generateAddSubRelationship(difficulty);
-        case 2: return generateMultDivRelationship(difficulty);
-        case 3: return generateDoublingHalving(difficulty);
-        default: return generateAddSubRelationship(difficulty);
+export function generateQuestion(difficulty = 'easy', chapter = null) {
+    if (chapter === 1) {
+        return generateChapter1Question(difficulty);
+    } else if (chapter === 2) {
+        return generateChapter2Question(difficulty);
+    } else {
+        // Random selection for backward compatibility
+        const chapterChoice = rand(1, 2);
+        return chapterChoice === 1 ? generateChapter1Question(difficulty) : generateChapter2Question(difficulty);
     }
 }
 
 // ============================================================================
-// SECTION 1: RELATIONSHIP BETWEEN ADDITION AND SUBTRACTION
+// CHAPTER 10.1: COLUMN CALCULATIONS + INVERSE & FACT FAMILIES
 // ============================================================================
 
-function generateAddSubRelationship(difficulty) {
-    const type = rand(0, 2);
+function generateChapter1Question(difficulty) {
+    const type = rand(0, 5);
 
     switch (type) {
-        case 0: return generateAddSubFactFamily(difficulty);
-        case 1: return generateAddSubInverse(difficulty);
-        case 2: return generateMissingNumberAddSub(difficulty);
-        default: return generateAddSubFactFamily(difficulty);
+        case 0: return generateColumnAddition(difficulty);
+        case 1: return generateColumnSubtraction(difficulty);
+        case 2: return generateAddSubFactFamily(difficulty);
+        case 3: return generateAddSubInverse(difficulty);
+        case 4: return generateMultDivFactFamily(difficulty);
+        case 5: return generateMissingNumberAddSub(difficulty);
+        default: return generateColumnAddition(difficulty);
     }
 }
 
 /**
+ * Column Addition - Vertical format with/without carrying
+ */
+function generateColumnAddition(difficulty) {
+    const lang = getLang();
+    let a, b, hasCarrying;
+
+    if (difficulty === 'easy') {
+        // No carrying: ones sum < 10
+        a = rand(10, 50);
+        const onesA = a % 10;
+        const maxOnesB = 9 - onesA;
+        b = rand(10, 30);
+        // Ensure no carrying
+        b = Math.floor(b / 10) * 10 + rand(0, Math.min(maxOnesB, 9));
+        hasCarrying = false;
+    } else if (difficulty === 'medium') {
+        // With carrying
+        a = rand(15, 50);
+        b = rand(15, 49);
+        hasCarrying = (a % 10) + (b % 10) >= 10;
+    } else {
+        // Definitely with carrying
+        a = rand(25, 50);
+        const onesA = a % 10;
+        const tensB = rand(1, 4);
+        const onesB = rand(10 - onesA, 9); // Ensure carrying
+        b = tensB * 10 + onesB;
+        hasCarrying = true;
+    }
+
+    const answer = a + b;
+    const carryText = hasCarrying ? t('calc', 'with_carrying', lang) : t('calc', 'no_carrying', lang);
+
+    // Create vertical column display
+    const aStr = a.toString().padStart(2, ' ');
+    const bStr = b.toString().padStart(2, ' ');
+
+    return {
+        question: `${t('calc', 'calculate', lang)} ${carryText}`,
+        questionHTML: `
+            <div class="column-calculation">
+                <div class="column-row top-number">
+                    ${aStr.split('').map(d => `<span class="digit">${d}</span>`).join('')}
+                </div>
+                <div class="column-row bottom-number">
+                    <span class="operator">+</span>${bStr.split('').map(d => `<span class="digit">${d}</span>`).join('')}
+                </div>
+                <div class="column-line"></div>
+                <div class="column-row answer-row">
+                    <span class="answer-placeholder">? ?</span>
+                </div>
+            </div>
+        `,
+        type: 'input',
+        answer: answer,
+        hint: hasCarrying ? t('calc', 'hint_carry_ten', lang) : t('calc', 'hint_add_ones_first', lang),
+        visual: '📐',
+        check: (input) => parseInt(input) === answer
+    };
+}
+
+/**
+ * Column Subtraction - Vertical format with/without borrowing
+ */
+function generateColumnSubtraction(difficulty) {
+    const lang = getLang();
+    let a, b, hasBorrowing;
+
+    if (difficulty === 'easy') {
+        // No borrowing: ones of a >= ones of b
+        a = rand(20, 50);
+        const onesA = a % 10;
+        const tensB = rand(0, Math.floor(a / 10) - 1);
+        const onesB = rand(0, onesA);
+        b = tensB * 10 + onesB;
+        hasBorrowing = false;
+    } else if (difficulty === 'medium') {
+        // Mix of with/without borrowing
+        a = rand(30, 70);
+        b = rand(10, a - 5);
+        hasBorrowing = (a % 10) < (b % 10);
+    } else {
+        // Definitely with borrowing
+        a = rand(40, 99);
+        const onesA = a % 10;
+        const tensB = rand(1, Math.floor(a / 10) - 1);
+        const onesB = rand(onesA + 1, 9); // Ensure borrowing
+        b = tensB * 10 + onesB;
+        hasBorrowing = true;
+    }
+
+    const answer = a - b;
+    const borrowText = hasBorrowing ? t('calc', 'with_borrowing', lang) : t('calc', 'no_borrowing', lang);
+
+    const aStr = a.toString().padStart(2, ' ');
+    const bStr = b.toString().padStart(2, ' ');
+
+    return {
+        question: `${t('calc', 'calculate', lang)} ${borrowText}`,
+        questionHTML: `
+            <div class="column-calculation">
+                <div class="column-row top-number">
+                    ${aStr.split('').map(d => `<span class="digit">${d}</span>`).join('')}
+                </div>
+                <div class="column-row bottom-number">
+                    <span class="operator">−</span>${bStr.split('').map(d => `<span class="digit">${d}</span>`).join('')}
+                </div>
+                <div class="column-line"></div>
+                <div class="column-row answer-row">
+                    <span class="answer-placeholder">? ?</span>
+                </div>
+            </div>
+        `,
+        type: 'input',
+        answer: answer,
+        hint: hasBorrowing ? t('calc', 'hint_borrow', lang) : t('calc', 'hint_sub_ones_first', lang),
+        visual: '📐',
+        check: (input) => parseInt(input) === answer
+    };
+}
+
+/**
  * Addition/Subtraction Fact Family
- * Given 3 numbers, identify which equation belongs to the fact family
  */
 function generateAddSubFactFamily(difficulty) {
     const lang = getLang();
 
-    // Generate fact family numbers
     const a = difficulty === 'easy' ? rand(2, 10) : difficulty === 'medium' ? rand(5, 20) : rand(10, 50);
     const b = difficulty === 'easy' ? rand(2, 10) : difficulty === 'medium' ? rand(5, 20) : rand(10, 50);
     const c = a + b;
 
-    // All 4 correct equations
     const correctEquations = [
         `${a} + ${b} = ${c}`,
         `${b} + ${a} = ${c}`,
@@ -61,7 +181,6 @@ function generateAddSubFactFamily(difficulty) {
         `${c} − ${b} = ${a}`
     ];
 
-    // Wrong equations
     const wrongEquations = [
         `${a} − ${b} = ${c}`,
         `${c} + ${a} = ${b}`,
@@ -78,7 +197,7 @@ function generateAddSubFactFamily(difficulty) {
         options: shuffle([correctAnswer, ...wrongOptions]),
         answer: correctAnswer,
         hint: t('calc', 'hint_fact_family_addsub', lang),
-        visual: '👨‍👩‍👧‍👦',
+        visual: '👨\u200d👩\u200d👧\u200d👦',
         check: (input) => input === correctAnswer
     };
 }
@@ -125,63 +244,6 @@ function generateAddSubInverse(difficulty) {
 }
 
 /**
- * Find the missing number using inverse relationship
- */
-function generateMissingNumberAddSub(difficulty) {
-    const lang = getLang();
-
-    const a = difficulty === 'easy' ? rand(5, 15) : difficulty === 'medium' ? rand(10, 30) : rand(20, 50);
-    const b = difficulty === 'easy' ? rand(2, 10) : difficulty === 'medium' ? rand(5, 20) : rand(10, 30);
-    const c = a + b;
-
-    const template = rand(0, 2);
-    let question, answer, hint;
-
-    if (template === 0) {
-        // a + ? = c
-        question = `${a} + ☐ = ${c}. ${t('calc', 'find_missing', lang)}`;
-        answer = b;
-        hint = `${t('calc', 'hint_use_inverse', lang)} ${c} − ${a} = ?`;
-    } else if (template === 1) {
-        // ? + b = c
-        question = `☐ + ${b} = ${c}. ${t('calc', 'find_missing', lang)}`;
-        answer = a;
-        hint = `${t('calc', 'hint_use_inverse', lang)} ${c} − ${b} = ?`;
-    } else {
-        // c - ? = a
-        question = `${c} − ☐ = ${a}. ${t('calc', 'find_missing', lang)}`;
-        answer = b;
-        hint = `${t('calc', 'hint_use_inverse', lang)} ${c} − ${a} = ?`;
-    }
-
-    return {
-        question: question,
-        type: difficulty === 'hard' ? 'input' : 'multiple_choice',
-        options: difficulty !== 'hard' ? generateOptionsWithPreferred(answer, [answer + 1, answer - 1, answer + 5]) : undefined,
-        answer: answer,
-        hint: hint,
-        visual: '❓',
-        check: (input) => parseInt(input) === answer
-    };
-}
-
-// ============================================================================
-// SECTION 2: RELATIONSHIP BETWEEN MULTIPLICATION AND DIVISION
-// (Fact Families & Inverse Equations)
-// ============================================================================
-
-function generateMultDivRelationship(difficulty) {
-    const type = rand(0, 2);
-
-    switch (type) {
-        case 0: return generateMultDivFactFamily(difficulty);
-        case 1: return generateMultDivInverse(difficulty);
-        case 2: return generateRepeatedAdditionToMult(difficulty);
-        default: return generateMultDivFactFamily(difficulty);
-    }
-}
-
-/**
  * Multiplication/Division Fact Family
  */
 function generateMultDivFactFamily(difficulty) {
@@ -218,49 +280,63 @@ function generateMultDivFactFamily(difficulty) {
         options: shuffle([correctAnswer, ...wrongOptions]),
         answer: correctAnswer,
         hint: t('calc', 'hint_fact_family_multdiv', lang),
-        visual: '👨‍👩‍👧‍👦',
+        visual: '👨\u200d👩\u200d👧\u200d👦',
         check: (input) => input === correctAnswer
     };
 }
 
 /**
- * Multiplication/Division Inverse - True or False
+ * Find missing number using inverse relationship
  */
-function generateMultDivInverse(difficulty) {
+function generateMissingNumberAddSub(difficulty) {
     const lang = getLang();
 
-    const table = difficulty === 'easy' ? 2 : difficulty === 'medium' ? 5 : 10;
-    const multiplier = rand(1, 10);
-    const product = table * multiplier;
+    const a = difficulty === 'easy' ? rand(5, 15) : difficulty === 'medium' ? rand(10, 30) : rand(20, 50);
+    const b = difficulty === 'easy' ? rand(2, 10) : difficulty === 'medium' ? rand(5, 20) : rand(10, 30);
+    const c = a + b;
 
-    const isTrue = rand(0, 1) === 0;
-    let statement, answer;
+    const template = rand(0, 2);
+    let question, answer, hint;
 
-    if (isTrue) {
-        const templates = [
-            `${t('calc', 'if', lang)} ${table} × ${multiplier} = ${product}, ${t('calc', 'then', lang)} ${product} ÷ ${table} = ${multiplier}`,
-            `${t('calc', 'if', lang)} ${product} ÷ ${multiplier} = ${table}, ${t('calc', 'then', lang)} ${table} × ${multiplier} = ${product}`
-        ];
-        statement = templates[rand(0, 1)];
-        answer = t('calc', 'true', lang);
+    if (template === 0) {
+        question = `${a} + ☐ = ${c}. ${t('calc', 'find_missing', lang)}`;
+        answer = b;
+        hint = `${t('calc', 'hint_use_inverse', lang)} ${c} − ${a} = ?`;
+    } else if (template === 1) {
+        question = `☐ + ${b} = ${c}. ${t('calc', 'find_missing', lang)}`;
+        answer = a;
+        hint = `${t('calc', 'hint_use_inverse', lang)} ${c} − ${b} = ?`;
     } else {
-        const templates = [
-            `${t('calc', 'if', lang)} ${table} × ${multiplier} = ${product}, ${t('calc', 'then', lang)} ${product} ÷ ${table} = ${multiplier + 1}`,
-            `${t('calc', 'if', lang)} ${table} × ${multiplier} = ${product + table}, ${t('calc', 'then', lang)} ${product + table} ÷ ${table} = ${multiplier}`
-        ];
-        statement = templates[rand(0, 1)];
-        answer = t('calc', 'false', lang);
+        question = `${c} − ☐ = ${a}. ${t('calc', 'find_missing', lang)}`;
+        answer = b;
+        hint = `${t('calc', 'hint_use_inverse', lang)} ${c} − ${a} = ?`;
     }
 
     return {
-        question: `${t('calc', 'inverse_true_false', lang)} ${statement}`,
-        type: 'multiple_choice',
-        options: [t('calc', 'true', lang), t('calc', 'false', lang)],
+        question: question,
+        type: difficulty === 'hard' ? 'input' : 'multiple_choice',
+        options: difficulty !== 'hard' ? generateOptionsWithPreferred(answer, [answer + 1, answer - 1, answer + 5]) : undefined,
         answer: answer,
-        hint: t('calc', 'hint_inverse_multdiv', lang),
-        visual: '🔄',
-        check: (input) => input === answer
+        hint: hint,
+        visual: '❓',
+        check: (input) => parseInt(input) === answer
     };
+}
+
+// ============================================================================
+// CHAPTER 10.2: MULTIPLICATION (CONNECTION TO ADDITION, DOUBLE/HALF)
+// ============================================================================
+
+function generateChapter2Question(difficulty) {
+    const type = rand(0, 3);
+
+    switch (type) {
+        case 0: return generateRepeatedAdditionToMult(difficulty);
+        case 1: return generateDoubling(difficulty);
+        case 2: return generateHalving(difficulty);
+        case 3: return generateMultiplication(difficulty);
+        default: return generateRepeatedAdditionToMult(difficulty);
+    }
 }
 
 /**
@@ -292,21 +368,6 @@ function generateRepeatedAdditionToMult(difficulty) {
         visual: '➕➡️✖️',
         check: (input) => input === correctAnswer
     };
-}
-
-// ============================================================================
-// SECTION 3: DOUBLING AND HALVING (Lesson 10.3 Prep)
-// ============================================================================
-
-function generateDoublingHalving(difficulty) {
-    const type = rand(0, 2);
-
-    switch (type) {
-        case 0: return generateDoubling(difficulty);
-        case 1: return generateHalving(difficulty);
-        case 2: return generateDoubleHalveConnection(difficulty);
-        default: return generateDoubling(difficulty);
-    }
 }
 
 /**
@@ -349,7 +410,6 @@ function generateDoubling(difficulty) {
 function generateHalving(difficulty) {
     const lang = getLang();
 
-    // Use even numbers for clean halving
     const half = difficulty === 'easy' ? rand(1, 10) : difficulty === 'medium' ? rand(5, 25) : rand(10, 50);
     const number = half * 2;
 
@@ -379,40 +439,33 @@ function generateHalving(difficulty) {
 }
 
 /**
- * Double and Halve Connection - Inverse relationship
+ * Perform Multiplication - Times tables (2, 5, 10)
  */
-function generateDoubleHalveConnection(difficulty) {
+function generateMultiplication(difficulty) {
     const lang = getLang();
 
-    const number = difficulty === 'easy' ? rand(2, 10) : difficulty === 'medium' ? rand(5, 20) : rand(10, 40);
-    const doubled = number * 2;
+    let table, multiplier;
 
-    const isTrue = rand(0, 1) === 0;
-    let statement, answer;
-
-    if (isTrue) {
-        const templates = [
-            `${t('calc', 'if', lang)} ${t('calc', 'double_of', lang).toLowerCase()} ${number} = ${doubled}, ${t('calc', 'then', lang)} ${t('calc', 'half_of', lang).toLowerCase()} ${doubled} = ${number}`,
-            `${t('calc', 'double_then_half', lang)} ${number} ${t('calc', 'gives_back', lang)} ${number}`
-        ];
-        statement = templates[rand(0, 1)];
-        answer = t('calc', 'true', lang);
+    if (difficulty === 'easy') {
+        table = [2, 5, 10][rand(0, 2)];
+        multiplier = rand(1, 5);
+    } else if (difficulty === 'medium') {
+        table = [2, 5, 10][rand(0, 2)];
+        multiplier = rand(2, 10);
     } else {
-        const templates = [
-            `${t('calc', 'if', lang)} ${t('calc', 'double_of', lang).toLowerCase()} ${number} = ${doubled}, ${t('calc', 'then', lang)} ${t('calc', 'half_of', lang).toLowerCase()} ${doubled} = ${number + 1}`,
-            `${t('calc', 'double_then_half', lang)} ${number} ${t('calc', 'gives_back', lang)} ${number + 2}`
-        ];
-        statement = templates[rand(0, 1)];
-        answer = t('calc', 'false', lang);
+        table = [2, 5, 10][rand(0, 2)];
+        multiplier = rand(5, 12);
     }
 
+    const answer = table * multiplier;
+
     return {
-        question: `${t('calc', 'inverse_true_false', lang)} ${statement}`,
-        type: 'multiple_choice',
-        options: [t('calc', 'true', lang), t('calc', 'false', lang)],
+        question: `${table} × ${multiplier} = ?`,
+        type: difficulty === 'hard' ? 'input' : 'multiple_choice',
+        options: difficulty !== 'hard' ? generateOptionsWithPreferred(answer, [answer + table, answer - table, answer + 1]) : undefined,
         answer: answer,
-        hint: t('calc', 'hint_double_halve_inverse', lang),
-        visual: '🔄',
-        check: (input) => input === answer
+        hint: `${t('multiply', 'hint_groups', getLang())} ${multiplier} ${t('multiply', 'hint_groups', getLang())} ${table}`,
+        visual: '✖️',
+        check: (input) => parseInt(input) === answer
     };
 }
